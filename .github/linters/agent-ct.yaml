@@ -1,0 +1,8 @@
+# See https://github.com/helm/chart-testing#configuration
+charts:
+  - charts/nebula-agent
+chart-repos:
+  - bitnami=https://charts.bitnami.com/bitnami
+helm-extra-args: --timeout 60s
+namespace: nebula
+release-label: nebula

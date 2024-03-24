@@ -1,0 +1,50 @@
+---
+sources:
+  common:
+    kind: helmchart
+    spec:
+      url: https://charts.bitnami.com/bitnami
+      name: common
+      versionFilter:
+        kind: semver
+        pattern: x.x.x
+    sourceid: common
+  postgresql:
+    kind: helmchart
+    spec:
+      url: https://charts.bitnami.com/bitnami
+      name: postgresql
+      versionFilter:
+        kind: semver
+        pattern: 11.x.x
+    sourceid: postgresql
+conditions: {}
+targets:
+  agent_common:
+    name: bump chart dependencies
+    kind: yaml
+    spec:
+      file: charts/nebula-agent/Chart.yaml
+      key: dependencies[0].version
+    sourceid: common
+  server_common:
+    name: bump chart dependencies
+    kind: yaml
+    spec:
+      file: charts/nebula-server/Chart.yaml
+      key: dependencies[0].version
+    sourceid: common
+  worker_common:
+    name: bump chart dependencies
+    kind: yaml
+    spec:
+      file: charts/nebula-worker/Chart.yaml
+      key: dependencies[0].version
+    sourceid: common
+  server_postgresql:
+    name: bump chart dependencies
+    kind: yaml
+    spec:
+      file: charts/nebula-server/Chart.yaml
+      key: dependencies[1].version
+    sourceid: postgresql

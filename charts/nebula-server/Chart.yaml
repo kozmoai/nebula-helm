@@ -1,0 +1,24 @@
+apiVersion: v2
+appVersion: 2-latest
+dependencies:
+  - name: common
+    repository: https://charts.bitnami.com/bitnami
+    tags:
+      - bitnami-common
+    version: 2.16.1
+  - name: postgresql
+    condition: postgresql.useSubChart
+    repository: https://charts.bitnami.com/bitnami
+    version: 12.12.10
+description: Nebula server application bundle
+engine: gotpl
+home: https://github.com/kozmoai
+maintainers:
+  - name: kozmoai
+    email: contact@kozmoai.org
+name: nebula-server
+sources:
+  - https://github.com/kozmoai/nebula-helm
+type: application
+# This version is never actually shipped. github actions will package add the appropriate version at build-time
+version: 0.0.0

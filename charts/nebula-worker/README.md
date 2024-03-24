@@ -1,0 +1,303 @@
+# nebula-worker
+
+## Overview
+
+[Workers](https://docs.nebula.io/latest/concepts/work-pools/#worker-overview) are lightweight polling services that retrieve scheduled runs from a work pool and execute them.
+
+Workers each have a type corresponding to the execution environment to which they will submit flow runs. Workers are only able to join work pools that match their type. As a result, when deployments are assigned to a work pool, you know in which execution environment scheduled flow runs for that deployment will run.
+
+## Installing the Chart
+
+### Prerequisites
+
+1. Add the Nebula Helm repository to your Helm client:
+
+    ```bash
+    helm repo add nebula https://kozmoai.github.io/nebula-helm
+    helm repo update
+    ```
+
+2. Create a new namespace in your Kubernetes cluster to deploy the Nebula worker in:
+
+    ```bash
+    kubectl create namespace nebula
+    ```
+
+### Configuring a Worker for Nebula Cloud
+
+1. Create a Kubernetes secret for a Nebula Cloud API key
+
+    First create a file named `api-key.yaml` with the following contents:
+
+    ```yaml
+    apiVersion: v1
+    kind: Secret
+    metadata:
+      name: nebula-api-key
+      namespace: nebula
+    type: Opaque
+    data:
+      key:  <base64-encoded-api-key>
+    ```
+
+    Replace `<base64-encoded-api-key>` with your Nebula Cloud API key encoded in base64. The helm chart looks for a secret of this name and schema, this can be overridden in the `values.yaml`.
+
+    You can use the following command to generate the base64-encoded value:
+
+    ```bash
+    echo -n "your-nebula-cloud-api-key" | base64
+    ```
+
+    Then apply the `api-key.yaml` file to create the Kubernetes secret:
+
+    ```bash
+    kubectl apply -f api-key.yaml
+    ```
+
+    Alternatively, you can create the Kubernetes secret via the cli with the following command. In this case, Kubernetes will take care of base64 encoding the value on your behalf:
+
+    ```bash
+    kubectl create secret generic nebula-api-key --from-literal=key=pnu_xxxx
+    ```
+
+2. Configure the Nebula worker values
+
+    Create a `values.yaml` file to customize the Nebula worker configuration. Add the following contents to the file:
+
+    ```yaml
+    worker:
+      cloudApiConfig:
+        accountId: <target account ID>
+        workspaceId: <target workspace ID>
+      config:
+        workPool: <target work pool name>
+    ```
+
+    These settings will ensure that the worker connects to the proper account, workspace, and work pool.
+    View your Account ID and Workspace ID in your browser URL when logged into Nebula Cloud. For example: `https://app.nebula.cloud/account/abc-my-account-id-is-here/workspaces/123-my-workspace-id-is-here`
+
+### Configuring a Worker for Self Hosted Cloud (not to be confused with [Nebula Server](https://github.com/kozmoai/nebula-helm/tree/main/charts/nebula-worker#configuring-a-worker-for-nebula-server))
+
+1. Create a Kubernetes secret for a Nebula Self Hosted Cloud API key
+
+    First create a file named `api-key.yaml` with the following contents:
+
+    ```yaml
+    apiVersion: v1
+    kind: Secret
+    metadata:
+      name: nebula-api-key
+      namespace: nebula
+    type: Opaque
+    data:
+      key:  <base64-encoded-api-key>
+    ```
+
+    Replace `<base64-encoded-api-key>` with your Nebula Self Hosted Cloud API key encoded in base64. The helm chart looks for a secret of this name and schema, this can be overridden in the `values.yaml`.
+
+    You can use the following command to generate the base64-encoded value:
+
+    ```bash
+    echo -n "your-nebula-self-hosted-cloud-api-key" | base64
+    ```
+
+    Then apply the `api-key.yaml` file to create the Kubernetes secret:
+
+    ```bash
+    kubectl apply -f api-key.yaml
+    ```
+
+    Alternatively, you can create the Kubernetes secret via the cli with the following command. In this case, Kubernetes will take care of base64 encoding the value on your behalf:
+
+    ```bash
+    kubectl create secret generic nebula-api-key --from-literal=key=pnu_xxxx
+    ```
+
+2. Configure the Nebula worker values
+
+    Create a `values.yaml` file to customize the Nebula worker configuration. Add the following contents to the file:
+
+    ```yaml
+    worker:
+      apiConfig: selfHosted
+      config:
+        workPool: <target work pool name>
+      selfHostedCloudApiConfig:
+        # If the nebula server is located external to this cluster, set a fully qualified domain name as the apiUrl
+        # If the nebula server pod is deployed to this cluster, use the cluster DNS endpoint: http://<nebula-server-service-name>.<namespace>.svc.cluster.local:<nebula-server-port>/api
+        apiUrl: "https://<DNS of Self Hosted Cloud API>"
+        accountId: <target account ID>
+        workspaceId: <target workspace ID>
+        uiUrl: "https://<DNS of Self Hosted Cloud UI>"
+    ```
+
+    These settings will ensure that the worker connects to the proper account, workspace, and work pool.
+    View your Account ID and Workspace ID in your browser URL when logged into Nebula Cloud. For example: `https://self-hosted-nebula.company/account/abc-my-account-id-is-here/workspaces/123-my-workspace-id-is-here`
+
+### Configuring a Worker for Nebula Server
+
+1. Configure the Nebula worker values
+
+    Create a `values.yaml` file to customize the Nebula worker configuration. Add the following contents to the file:
+
+    ```yaml
+    worker:
+      apiConfig: server
+      config:
+        workPool: <target work pool name>
+      serverApiConfig:
+        apiUrl: <dns or ip address of the nebula-server pod here>
+    ```
+
+    These settings will ensure the worker connects with the local deployment of Nebula Server.
+    If the Nebula Server pod is deployed in the same cluster, you can use the local Kubernetes DNS address to connect to it: `nebula-server.<namespace>.svc.cluster.local`
+
+### Installing & Verifying Deployment of the Nebula Worker
+
+1. Install the Nebula worker using Helm
+
+    ```bash
+    helm install nebula-worker nebula/nebula-worker --namespace=nebula -f values.yaml
+    ```
+
+2. Verify the deployment
+
+    Check the status of your Nebula worker deployment:
+
+    ```bash
+    kubectl get pods -n nebula
+
+    NAME                              READY   STATUS    RESTARTS       AGE
+    nebula-worker-658f89bc49-jglvt   1/1     Running   0              25m
+    ```
+
+    You should see the Nebula worker pod running
+
+## FAQ
+
+### Deploying multiple workers to a single namespace
+
+If you want to run more than one worker in a single Kubernetes namespace, you will need to specify the `fullnameOveride` parameter at install time of one of the workers.
+
+```yaml
+fullnameOverride: nebula-worker-2
+```
+
+If you want the workers to share a service account, add the following to your `values.yaml`:
+
+```yaml
+fullnameOverride: nebula-worker-2
+serviceAccount:
+  create: false
+  name: "nebula-worker"
+```
+
+### Configuring a Base Job Template on the Worker
+
+If you want to define the [base job template](https://docs.nebula.io/concepts/work-pools/#base-job-template) of the worker and pass it as a value in this chart, you will need to do the following. **Note** if the `workPool` already exists, the base job template passed **will** be ignored.
+
+1. Define the base job template in a local file. To get a formatted template, run the following command & store locally in `base-job-template.json`
+
+```bash
+# you may need to install `nebula-kubernetes` first
+pip install nebula-kubernetes
+
+nebula work-pool get-default-base-job-template --type kubernetes > base-job-template.json
+```
+
+2. Modify the base job template as needed
+
+3. Install the chart as you usually would, making sure to use the `--set-file` command to pass in the `base-job-template.json` file as a paramater:
+
+```bash
+helm install nebula-worker nebula/nebula-worker -f values.yaml --set-file worker.config.baseJobTemplate=base-job-template.json
+```
+
+## Maintainers
+
+| Name | Email | Url |
+| ---- | ------ | --- |
+| jamiezieziula | <jamie@nebula.io> |  |
+| jimid27 | <jimi@nebula.io> |  |
+| parkedwards | <edward@nebula.io> |  |
+
+## Requirements
+
+| Repository | Name | Version |
+|------------|------|---------|
+| https://charts.bitnami.com/bitnami | common | 2.16.1 |
+
+## Values
+
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| commonAnnotations | object | `{}` | annotations to add to all deployed objects |
+| commonLabels | object | `{}` | labels to add to all deployed objects |
+| fullnameOverride | string | `"nebula-worker"` | fully override common.names.fullname |
+| nameOverride | string | `""` | partially overrides common.names.name |
+| namespaceOverride | string | `""` | fully override common.names.namespace |
+| role.create | bool | `true` | specifies whether a Role should be created |
+| role.extraPermissions | list | `[]` | array with extra permissions to add to the worker role |
+| rolebinding.create | bool | `true` | specifies whether a RoleBinding should be created |
+| serviceAccount.annotations | object | `{}` | additional service account annotations (evaluated as a template) |
+| serviceAccount.create | bool | `true` | specifies whether a ServiceAccount should be created |
+| serviceAccount.name | string | `""` | the name of the ServiceAccount to use. if not set and create is true, a name is generated using the common.names.fullname template |
+| worker.affinity | object | `{}` | affinity for worker pods assignment |
+| worker.apiConfig | string | `"cloud"` | one of 'cloud', 'selfHosted', or 'server' |
+| worker.cloudApiConfig.accountId | string | `""` | nebula account ID |
+| worker.cloudApiConfig.apiKeySecret.key | string | `"key"` | nebula API secret key |
+| worker.cloudApiConfig.apiKeySecret.name | string | `"nebula-api-key"` | nebula API secret name |
+| worker.cloudApiConfig.cloudUrl | string | `"https://api.nebula.cloud/api"` | nebula cloud API url; the full URL is constructed as https://cloudUrl/accounts/accountId/workspaces/workspaceId |
+| worker.cloudApiConfig.workspaceId | string | `""` | nebula workspace ID |
+| worker.clusterUid | string | `""` | unique cluster identifier, if none is provided this value will be infered at time of helm install |
+| worker.config.baseJobTemplate | string | `nil` | JSON formatted base job template. If unspecified, Nebula will use the default base job template for the given worker type. If the work pool already exists, this will be ignored. |
+| worker.config.http2 | bool | `true` | connect using HTTP/2 if the server supports it (experimental) |
+| worker.config.installPolicy | string | `"prompt"` | install policy to use workers from Nebula integration packages. |
+| worker.config.limit | string | `nil` | maximum number of flow runs to start simultaneously (default: unlimited) |
+| worker.config.name | string | `nil` | the name to give to the started worker. If not provided, a unique name will be generated. |
+| worker.config.prefetchSeconds | int | `10` | when querying for runs, how many seconds in the future can they be scheduled |
+| worker.config.queryInterval | int | `5` | how often the worker will query for runs |
+| worker.config.type | string | `"kubernetes"` | specify the worker type |
+| worker.config.workPool | string | `""` | the work pool that your started worker will poll. |
+| worker.config.workQueues | list | `[]` | one or more work queue names for the worker to pull from. if not provided, the worker will pull from all work queues in the work pool |
+| worker.containerSecurityContext.allowPrivilegeEscalation | bool | `false` | set worker containers' security context allowPrivilegeEscalation |
+| worker.containerSecurityContext.readOnlyRootFilesystem | bool | `true` | set worker containers' security context readOnlyRootFilesystem |
+| worker.containerSecurityContext.runAsNonRoot | bool | `true` | set worker containers' security context runAsNonRoot |
+| worker.containerSecurityContext.runAsUser | int | `1001` | set worker containers' security context runAsUser |
+| worker.extraArgs | list | `[]` | array with extra Arguments for the worker container to start with |
+| worker.extraContainers | list | `[]` | additional sidecar containers |
+| worker.extraEnvVars | list | `[]` | array with extra environment variables to add to worker nodes |
+| worker.extraEnvVarsCM | string | `""` | name of existing ConfigMap containing extra env vars to add to worker nodes |
+| worker.extraEnvVarsSecret | string | `""` | name of existing Secret containing extra env vars to add to worker nodes |
+| worker.extraVolumeMounts | list | `[]` | array with extra volumeMounts for the worker pod |
+| worker.extraVolumes | list | `[]` | array with extra volumes for the worker pod |
+| worker.image.debug | bool | `false` | enable worker image debug mode |
+| worker.image.nebulaTag | string | `"2-python3.11-kubernetes"` | nebula image tag (immutable tags are recommended) |
+| worker.image.pullPolicy | string | `"IfNotPresent"` | worker image pull policy |
+| worker.image.pullSecrets | list | `[]` | worker image pull secrets |
+| worker.image.repository | string | `"kozmoai/nebula"` | worker image repository |
+| worker.livenessProbe.config.failureThreshold | int | `3` | The number of consecutive failures allowed before considering the probe as failed. |
+| worker.livenessProbe.config.initialDelaySeconds | int | `10` | The number of seconds to wait before starting the first probe. |
+| worker.livenessProbe.config.periodSeconds | int | `10` | The number of seconds to wait between consecutive probes. |
+| worker.livenessProbe.config.successThreshold | int | `1` | The minimum consecutive successes required to consider the probe successful. |
+| worker.livenessProbe.config.timeoutSeconds | int | `5` | The number of seconds to wait for a probe response before considering it as failed. |
+| worker.livenessProbe.enabled | bool | `false` |  |
+| worker.nodeSelector | object | `{}` | node labels for worker pods assignment |
+| worker.podAnnotations | object | `{}` | extra annotations for worker pod |
+| worker.podLabels | object | `{}` | extra labels for worker pod |
+| worker.podSecurityContext.fsGroup | int | `1001` | set worker pod's security context fsGroup |
+| worker.podSecurityContext.runAsNonRoot | bool | `true` | set worker pod's security context runAsNonRoot |
+| worker.podSecurityContext.runAsUser | int | `1001` | set worker pod's security context runAsUser |
+| worker.priorityClassName | string | `""` | priority class name to use for the worker pods; if the priority class is empty or doesn't exist, the worker pods are scheduled without a priority class |
+| worker.replicaCount | int | `1` | number of worker replicas to deploy |
+| worker.resources.limits | object | `{"cpu":"1000m","memory":"1Gi"}` | the requested limits for the worker container |
+| worker.resources.requests | object | `{"cpu":"100m","memory":"256Mi"}` | the requested resources for the worker container |
+| worker.selfHostedCloudApiConfig.accountId | string | `""` | nebula account ID |
+| worker.selfHostedCloudApiConfig.apiKeySecret.key | string | `"key"` | nebula API secret key |
+| worker.selfHostedCloudApiConfig.apiKeySecret.name | string | `"nebula-api-key"` | nebula API secret name |
+| worker.selfHostedCloudApiConfig.apiUrl | string | `""` | nebula API url (NEBULA_API_URL) |
+| worker.selfHostedCloudApiConfig.uiUrl | string | `""` | self hosted UI url |
+| worker.selfHostedCloudApiConfig.workspaceId | string | `""` | nebula workspace ID |
+| worker.serverApiConfig.apiUrl | string | `""` | nebula API url (NEBULA_API_URL) |
+| worker.serverApiConfig.uiUrl | string | `"http://localhost:4200"` | nebula UI url |
+| worker.tolerations | list | `[]` | tolerations for worker pods assignment |

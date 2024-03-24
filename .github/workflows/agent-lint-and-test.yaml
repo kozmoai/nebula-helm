@@ -1,0 +1,52 @@
+name: Lint and Test Nebula Agent Chart
+
+"on":
+  pull_request_target:
+
+# Do not grant jobs any permissions by default
+permissions: {}
+
+jobs:
+  lint_test:
+    name: "lint-test (${{ matrix.kubernetes }})"
+    runs-on: ubuntu-latest
+    permissions:
+      # required to read from the repo
+      contents: read
+    strategy:
+      matrix:
+        kubernetes:
+          - "1.26.0"
+          - "1.27.0"
+          - "1.28.0"
+          - "1.29.0"
+      fail-fast: false
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v3.5
+
+      - name: Set up chart-testing
+        uses: helm/chart-testing-action@v2.6.1
+
+      - name: Run chart-testing (lint)
+        run: ct lint --config .github/linters/agent-ct.yaml
+
+      - name: Create kind cluster
+        uses: helm/kind-action@v1.9.0
+        with:
+          node_image: "kindest/node:v${{ matrix.kubernetes }}"
+
+      - name: Create API Secret for Agent Chart
+        run: |
+          kubectl create ns nebula
+          kubectl create secret generic nebula-api-key  --from-literal=key=${{ secrets.NEBULA_CLOUD_API_KEY }} -n nebula
+
+      - name: Run chart-testing (install)
+        run: |
+          ct install --config .github/linters/agent-ct.yaml --helm-extra-set-args "--set=agent.config.workQueueName=agent --set=agent.cloudApiConfig.accountId=${{ secrets.NEBULA_CLOUD_ACCOUNT_ID }} --set=agent.cloudApiConfig.workspaceId=${{ secrets.NEBULA_CLOUD_WORKSPACE_ID }} --set=agent.cloudApiConfig.cloudUrl=${{ secrets.NEBULA_CLOUD_API_URL }}"

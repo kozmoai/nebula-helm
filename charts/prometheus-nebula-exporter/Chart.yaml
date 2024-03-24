@@ -1,0 +1,25 @@
+apiVersion: v2
+appVersion: "latest"
+description: A Helm chart to deploy Prometheus Nebula Exporter
+home: https://github.com/kozmoai
+dependencies:
+  - name: common
+    repository: https://charts.bitnami.com/bitnami
+    tags:
+      - bitnami-common
+    version: 2.16.1
+keywords:
+  - prometheus-nebula-exporter
+maintainers:
+  - name: jamiezieziula
+    email: jamie@nebula.io
+  - name: jimid27
+    email: jimi@nebula.io
+  - name: parkedwards
+    email: edward@nebula.io
+name: prometheus-nebula-exporter
+sources:
+  - https://github.com/kozmoai/nebula-helm
+type: application
+# This version is never actually shipped. github actions will package add the appropriate version at build-time
+version: 0.0.0

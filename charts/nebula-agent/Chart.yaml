@@ -1,0 +1,19 @@
+apiVersion: v2
+appVersion: 2-latest
+dependencies:
+  - name: common
+    repository: https://charts.bitnami.com/bitnami
+    tags:
+      - bitnami-common
+    version: 2.16.1
+description: Nebula Agent application bundle
+engine: gotpl
+home: https://github.com/kozmoai
+maintainers:
+  - name: kozmoai
+    email: contact@kozmoai.org
+name: nebula-agent
+sources:
+  - https://github.com/kozmoai/nebula-helm
+type: application
+version: 0.0.0

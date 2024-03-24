@@ -1,0 +1,51 @@
+{{ template "chart.header" . }}
+
+## Overview
+
+This chart deploys a [Prometheus Exporter](https://github.com/kozmoai/prometheus-nebula-exporter) for Nebula Server, providing relevant metrics from your deployed Nebula Server instance.
+Shoutout to @ialejandro for the original work on this chart!
+
+## Installing the Chart
+
+### Prerequisites
+
+1. Add the Nebula Helm repository to your Helm client:
+
+    ```bash
+    helm repo add nebula https://kozmoai.github.io/nebula-helm
+    helm repo update
+    ```
+
+2. Deploy a Nebula Server instance using the [Nebula Server Helm chart](https://github.com/kozmoai/nebula-helm/tree/main/charts/nebula-server)
+
+### Install the Nebula Exporter chart
+
+1. Configure the Nebula exporter values as needed
+    Create a `values.yaml` file to customize the Prometheus Nebula Exporter configuration.
+
+2. Install the chart
+    ```bash
+    helm install prometheus-nebula-exporter nebula/prometheus-nebula-exporter --namespace=<NEBULA_SERVER_NAMESPACE> -f values.yaml
+    ```
+
+3. Verify the deployment
+
+    Check the status of your Prometheus Nebula Exporter deployment:
+
+    ```bash
+    kubectl get pods -n nebula
+
+    NAME                                  READY   STATUS    RESTARTS       AGE
+    prometheus-nebula-exporter-76vxqnq   1/1     Running   0              25m
+    ```
+
+    You should see the Prometheus Nebula Exporter pod running
+
+
+{{ template "chart.maintainersSection" . }}
+
+{{ template "chart.requirementsSection" . }}
+
+{{ template "chart.valuesSection" . }}
+
+{{ template "helm-docs.versionFooter" . }}

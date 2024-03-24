@@ -1,0 +1,159 @@
+name: Release Helm Chart
+
+"on":
+  workflow_dispatch:
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # We set the chart release version here - the version schema
+      # is a SemVer adherent date-based versioning scheme that looks like:
+      # 2024.2.9125019
+      # which equates to a release on 2/9/24 at 12:50:19
+      - name: Get the version tags
+        id: get_version
+        run: |
+          # Enable pipefail so git command failures do not result in null versions downstream
+          set -x
+
+          echo "RELEASE_VERSION=$(date +'%Y.%-m.%-d%H%M%S')" >> $GITHUB_OUTPUT
+          echo "NEBULA_VERSION=$(\
+            git ls-remote --tags --refs --sort="v:refname" \
+            https://github.com/kozmoai/nebula.git '*.*.*' | tail -n1 | sed 's/.*\///' \
+          )" >> $GITHUB_OUTPUT
+
+      - name: Copy Artifact Hub metadata
+        run: |
+          mkdir -p /tmp/chart
+          cp artifacthub-repo.yml /tmp/chart
+
+      - name: Configure Git
+        run: |
+          git config user.name "$GITHUB_ACTOR"
+          git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v3.5
+
+      - name: Prepare GPG key for signing
+        run: |
+          gpg_dir=/tmp/.gpg
+          mkdir "$gpg_dir"
+          keyring="$gpg_dir/secring.gpg"
+          base64 -d <<< "$GPG_KEYRING_BASE64" > "$keyring"
+          passphrase_file="$gpg_dir/passphrase"
+          echo "$GPG_PASSPHRASE" > "$passphrase_file"
+          echo "SIGN_PASSPHRASE_FILE=$passphrase_file" >> "$GITHUB_ENV"
+          echo "SIGN_KEYRING=$keyring" >> "$GITHUB_ENV"
+        env:
+          GPG_KEYRING_BASE64: "${{ secrets.GPG_KEYRING_BASE64 }}"
+          GPG_PASSPHRASE: "${{ secrets.GPG_PASSPHRASE }}"
+
+      - name: Add dependency chart repos
+        run: |
+          helm repo add bitnami https://charts.bitnami.com/bitnami
+
+      - name: Package Agent helm chart
+        run: |
+          mkdir -p /tmp/chart
+          cd charts
+          # Update the nebula version tag in values.yaml
+          sed -i "s/nebulaTag:.*$/nebulaTag: $NEBULA_VERSION-python3.10/g" nebula-agent/values.yaml
+          helm package nebula-agent \
+            --destination /tmp/chart \
+            --dependency-update \
+            --version $RELEASE_VERSION \
+            --app-version $NEBULA_VERSION \
+            --sign --key 'jamie@nebula.io' \
+            --keyring $SIGN_KEYRING \
+            --passphrase-file $SIGN_PASSPHRASE_FILE
+        env:
+          RELEASE_VERSION: ${{ steps.get_version.outputs.RELEASE_VERSION }}
+          NEBULA_VERSION: ${{ steps.get_version.outputs.NEBULA_VERSION }}
+          SIGN_KEYRING: ${{ env.SIGN_KEYRING }}
+          SIGN_PASSPHRASE_FILE: ${{ env.SIGN_PASSPHRASE_FILE }}
+
+      - name: Package Worker helm chart
+        run: |
+          mkdir -p /tmp/chart
+          cd charts
+          # Update the nebula version tag in values.yaml
+          sed -i "s/nebulaTag:.*$/nebulaTag: $NEBULA_VERSION-python3.11-kubernetes/g" nebula-worker/values.yaml
+          helm package nebula-worker \
+            --destination /tmp/chart \
+            --dependency-update \
+            --version $RELEASE_VERSION \
+            --app-version $NEBULA_VERSION \
+            --sign --key 'jamie@nebula.io' \
+            --keyring $SIGN_KEYRING \
+            --passphrase-file $SIGN_PASSPHRASE_FILE
+        env:
+          RELEASE_VERSION: ${{ steps.get_version.outputs.RELEASE_VERSION }}
+          NEBULA_VERSION: ${{ steps.get_version.outputs.NEBULA_VERSION }}
+          SIGN_KEYRING: ${{ env.SIGN_KEYRING }}
+          SIGN_PASSPHRASE_FILE: ${{ env.SIGN_PASSPHRASE_FILE }}
+
+      - name: Package Server helm chart
+        run: |
+          mkdir -p /tmp/chart
+          cd charts
+          # Update the nebula version tag in values.yaml
+          sed -i "s/nebulaTag:.*$/nebulaTag: $NEBULA_VERSION-python3.10/g" nebula-server/values.yaml
+          helm package nebula-server \
+            --destination /tmp/chart \
+            --dependency-update \
+            --version $RELEASE_VERSION \
+            --app-version $NEBULA_VERSION \
+            --sign --key 'jamie@nebula.io' \
+            --keyring $SIGN_KEYRING \
+            --passphrase-file $SIGN_PASSPHRASE_FILE
+        env:
+          RELEASE_VERSION: ${{ steps.get_version.outputs.RELEASE_VERSION }}
+          NEBULA_VERSION: ${{ steps.get_version.outputs.NEBULA_VERSION }}
+          SIGN_KEYRING: ${{ env.SIGN_KEYRING }}
+          SIGN_PASSPHRASE_FILE: ${{ env.SIGN_PASSPHRASE_FILE }}
+
+      - name: Update chart index
+        run: |
+          git stash  # Stash changes to the values.yaml so checkout doesn't complain
+          git checkout gh-pages
+          helm repo index /tmp/chart --url https://kozmoai.github.io/nebula-helm/charts --merge ./index.yaml
+
+      - name: Commit and push
+        run: |
+          cp /tmp/chart/artifacthub-repo.yml .
+          cp /tmp/chart/index.yaml .
+          cp /tmp/chart/nebula-agent-$RELEASE_VERSION.* ./charts
+          cp /tmp/chart/nebula-server-$RELEASE_VERSION.* ./charts
+          cp /tmp/chart/nebula-worker-$RELEASE_VERSION.* ./charts
+          git add ./artifacthub-repo.yml ./index.yaml ./charts/nebula-agent-$RELEASE_VERSION.* ./charts/nebula-server-$RELEASE_VERSION.* ./charts/nebula-worker-$RELEASE_VERSION.*
+          git commit -m "Release $RELEASE_VERSION"
+          git push origin gh-pages
+        env:
+          RELEASE_VERSION: ${{ steps.get_version.outputs.RELEASE_VERSION }}
+
+      - name: Trigger deploy-latest-helm-version workflow
+        run: |
+          gh workflow run deploy-latest-helm-version.yaml \
+            --ref main \
+            -f helm_version=$RELEASE_VERSION
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          RELEASE_VERSION: ${{ steps.get_version.outputs.RELEASE_VERSION }}
+
+      - name: Create Github Release + Tag
+        run: |
+          gh release create $RELEASE_VERSION \
+            --generate-notes \
+            --notes "Packaged with Nebula version \
+            [$NEBULA_VERSION](https://github.com/kozmoai/nebula/releases/tag/$NEBULA_VERSION)"
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          RELEASE_VERSION: ${{ steps.get_version.outputs.RELEASE_VERSION }}
+          NEBULA_VERSION: ${{ steps.get_version.outputs.NEBULA_VERSION }}
