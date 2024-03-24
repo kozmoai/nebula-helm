@@ -3,6 +3,28 @@ entries:
   nebula-agent:
   - apiVersion: v2
     appVersion: --sign
+    created: "2024-03-24T20:39:21.507783526Z"
+    dependencies:
+    - name: common
+      repository: https://charts.bitnami.com/bitnami
+      tags:
+      - bitnami-common
+      version: 2.16.1
+    description: Nebula Agent application bundle
+    digest: 4a82b8c898b55ba5a464c8ad3a7d7e9e0faa37c8c24158d7aeb900bfac2f7510
+    home: https://github.com/kozmoai
+    maintainers:
+    - email: contact@kozmoai.org
+      name: kozmoai
+    name: nebula-agent
+    sources:
+    - https://github.com/kozmoai/nebula-helm
+    type: application
+    urls:
+    - https://kozmoai.github.io/nebula-helm/charts/nebula-agent-2024.3.24203857.tgz
+    version: 2024.3.24203857
+  - apiVersion: v2
+    appVersion: --sign
     created: "2024-03-24T20:28:49.85798812Z"
     dependencies:
     - name: common
@@ -46,6 +68,32 @@ entries:
     - https://kozmoai.github.io/nebula-helm/charts/nebula-agent-2024.3.24202320.tgz
     version: 2024.3.24202320
   nebula-server:
+  - apiVersion: v2
+    appVersion: --sign
+    created: "2024-03-24T20:39:21.513929445Z"
+    dependencies:
+    - name: common
+      repository: https://charts.bitnami.com/bitnami
+      tags:
+      - bitnami-common
+      version: 2.16.1
+    - condition: postgresql.useSubChart
+      name: postgresql
+      repository: https://charts.bitnami.com/bitnami
+      version: 12.12.10
+    description: Nebula server application bundle
+    digest: 91efe1d917a7490a683c138ebcfa6cfba5bd1fe2034d02253a3861bdc6e14a73
+    home: https://github.com/kozmoai
+    maintainers:
+    - email: contact@kozmoai.org
+      name: kozmoai
+    name: nebula-server
+    sources:
+    - https://github.com/kozmoai/nebula-helm
+    type: application
+    urls:
+    - https://kozmoai.github.io/nebula-helm/charts/nebula-server-2024.3.24203857.tgz
+    version: 2024.3.24203857
   - apiVersion: v2
     appVersion: --sign
     created: "2024-03-24T20:28:49.865010472Z"
@@ -101,6 +149,32 @@ entries:
   nebula-worker:
   - apiVersion: v2
     appVersion: --sign
+    created: "2024-03-24T20:39:21.515240537Z"
+    dependencies:
+    - name: common
+      repository: https://charts.bitnami.com/bitnami
+      tags:
+      - bitnami-common
+      version: 2.16.1
+    description: Nebula Worker application bundle
+    digest: 6bc3ad5cc7001fc89b978bcdd32d2a4ce48856ef68e6e921973a8f8d114c3168
+    home: https://github.com/kozmoai
+    maintainers:
+    - email: jamie@nebula.io
+      name: jamiezieziula
+    - email: jimi@nebula.io
+      name: jimid27
+    - email: edward@nebula.io
+      name: parkedwards
+    name: nebula-worker
+    sources:
+    - https://github.com/kozmoai/nebula-helm
+    type: application
+    urls:
+    - https://kozmoai.github.io/nebula-helm/charts/nebula-worker-2024.3.24203857.tgz
+    version: 2024.3.24203857
+  - apiVersion: v2
+    appVersion: --sign
     created: "2024-03-24T20:28:49.86641954Z"
     dependencies:
     - name: common
@@ -151,4 +225,4 @@ entries:
     urls:
     - https://kozmoai.github.io/nebula-helm/charts/nebula-worker-2024.3.24202320.tgz
     version: 2024.3.24202320
-generated: "2024-03-24T20:28:49.856657618Z"
+generated: "2024-03-24T20:39:21.506552074Z"
