@@ -21,4 +21,4 @@ jobs:
             --ref main \
             -f helm_version=${{ github.ref_name }}
         env:
-          GITHUB_TOKEN: ${{ secrets.OPS_CLUSTER_DEPLOYMENT_ACTIONS_RW }}
+          GITHUB_TOKEN: ${{ secrets.API_GITHUB_TOKEN }}
