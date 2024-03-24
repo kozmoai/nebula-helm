@@ -31,4 +31,4 @@ jobs:
           updatecli diff --config .github/updatecli/manifest-minor.yaml
           updatecli diff --config .github/updatecli/manifest-major.yaml
         env:
-          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_TOKEN: ${{ secrets.API_GITHUB_TOKEN }}
